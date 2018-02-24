@@ -1,0 +1,66 @@
+This is a simple guide by 1nf1deL about how to set up a headless raspberry pi
+where the built in NIC uses an ad-hoc connection to your phone/computer while 
+the add-on NIC will be used for monitor mode or wifi cracking.
+
+First configure your pi to auto login when powered on. This means you won't need to
+use a monitor or keyboard and can control your pi on the go by simply turning it on:
+
+Edit the /etc/lightdm/light-dm.conf file
+by uncommenting #autologin-user = root  and #autologin-user-timeout = 0. Remember there
+are two entries of each of the lines. Also configure the /etc/pam.d/lightdm-autologin by
+adding three pound signs to the middle line:
+# Allow access without authentication
+###auth required pam_succeed_if.so user != root quiet_success
+auth required pam_permit.so
+
+Now we need to enable ad-hoc networking for the integrated NIC which would be wlan0.
+It is important to make a copy of the original /etc/network/interfaces file so you have
+a reference in case you want to go back to normal networking. You could just keep the
+default settings commented out with a # on each line in the interfaces file
+or copy the whole file as a reference. It's your choice:
+
+to enable ad-hoc connection we edited the /etc/network/interfaces config. We made a copy of
+the original in the /etc/network/ directory called interfaces.org. We updated interfaces
+to contain ad-hoc settings:
+auto wlan0
+iface wlan0 inet static
+address 192.168.1.2 #set this IP to whatever you want your pi to be
+netmask 255.255.255.0
+wireless-channel 1
+wireless-essid raspberry #this will be the name of the wifi network the pi broadcasts
+wireless-mode ad-hoc. 
+
+When you connect to the raspberry pi network, there is no DHCP server installed on the pi
+by default. This means you either have to find a dhcp server to install (which is a bitch)
+or just manually configure your laptop/phone with a static ip in the 192.168.1.x range.  
+
+To configure the other NIC wireless card to monitor mode, plug it in. Then check to see
+if it is recognized by running the iwconfig (shows wireless interfaces). If not, try
+restarting with the wireless card plugged in. Once it shows up, run the airmon-ng 
+command in a terminal. It will list your available wireless adapters. wlan0 should be
+the default which is in ad-hoc mode, and wlan1 should be the new network card for monitor
+mode. To enable monitor mode, type the command airmon-ng check, this command checks
+for potential proccesses running that could interfere with monitor mode. After running
+the check, type airmon-ng check kill, which kills those processes.
+
+!!! You may get an error on raspberry pi where airmon-ng check kill can't kill the
+processes. To get around this kill these there processes manually:
+service network-manager stop
+service avahi-daemon stop
+service upstart-udev-bridge-stop
+Remember these because you may have to start them back up after disabling monitor mode.
+
+From there, type airmon-ng start wlan1, this turns your wireless adapter to monitor mode.
+If you type iwconfig again, you will see that your wlan1 has been renamed to wlan1mon.
+Basically, airmon-ng has created a new interface for monitor mode.  
+
+Run the command wireshark to start wireshark and start collecting packets from the wlan1
+interface. 
+
+
+
+
+To exit monitor mode for wlan1, type airmon-ng stop wlan0mon.
+Don't forget to restart the network manager with
+service network-manager start
+(and possible those other processes you killed manually)
